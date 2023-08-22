@@ -6,7 +6,6 @@ using UnityEngine.EventSystems;
 
 public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler {
 	Image image;
-	ColorGrid parent;
 	public ColorSphere sphere;
 	public int grid_x;
 	public int grid_y;
@@ -23,15 +22,14 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 		this.rectTransform = GetComponent<RectTransform>();
 	}
 
-	public void Init(ColorGrid myParent, int x, int y) {
-		this.parent = myParent;
+	public void Init(int x, int y) {
 		this.grid_x = x;
 		this.grid_y = y;
-		this.parent.squareList[x, y] = this;
+        ColorGrid.instance.squareList[x, y] = this;
 
-		GameObject sphereObject = Instantiate(this.parent.sphereBox.spherePrefab, this.parent.sphereBox.transform);
+		GameObject sphereObject = Instantiate(SphereBox.instance.spherePrefab, SphereBox.instance.transform);
 		this.sphere = sphereObject.GetComponent<ColorSphere>();
-		this.sphere.Init(this, this.parent.sphereBox);
+		this.sphere.Init(this);
 
 		this.ToggleEnabled(false);
 
@@ -65,7 +63,7 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 		this.SetColor(this.image.color);
 
 		if (!isInitializing) {
-			this.parent.UpdateRamps();
+            ColorGrid.instance.UpdateRamps();
 		}
 	}
 
@@ -76,7 +74,7 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 		}
 
 		if (isEnabled && (doToggle || (eventData.button == PointerEventData.InputButton.Left))) {
-			this.parent.ShowPicker(this);
+			ColorGrid.instance.ShowPicker(this);
 		}
 	}
 
@@ -88,9 +86,9 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 
 	public void OnEndDrag(PointerEventData eventData) {
 		Vector2 position = eventData.position;
-		foreach (ColorSquare square in this.parent.squareList) {
+		foreach (ColorSquare square in ColorGrid.instance.squareList) {
 			if (RectTransformUtility.RectangleContainsScreenPoint(square.GetComponent<RectTransform>(), position)) {
-				this.parent.SwapColors(this, square);
+				ColorGrid.instance.SwapColors(this, square);
 				break;
 			}
 		}

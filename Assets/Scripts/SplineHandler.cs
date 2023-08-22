@@ -10,7 +10,7 @@ public class SplineHandler : MonoBehaviour {
 	public SplineContainer splineContainer;
 	SplineExtrude splineExtrude;
     MeshFilter meshFilter;
-
+    public SphereBox sphereBox;
 
     List<ColorSphere> connectedSpheres;
     [SerializeField] private Material splineMaterial;
@@ -53,7 +53,7 @@ public class SplineHandler : MonoBehaviour {
         this.splineExtrude.Rebuild();
     }
     public void Show() {
-        this.splineExtrude.Radius = 3;
+        this.splineExtrude.Radius = float.Parse(SphereBox.instance.InputSplineSize.text);
         this.splineExtrude.Rebuild();
     }
 }

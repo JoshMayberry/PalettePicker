@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UIElements;
 
 // [ExecuteInEditMode]
 [RequireComponent(typeof(LineRenderer))]
@@ -10,28 +11,45 @@ public class SphereBox : MonoBehaviour {
 	public float box_size = 400f;
 	public Color box_color = Color.white;
 	Vector3 lastPosition;
-	public ColorGrid colorGrid;
 
 	public SplineHandler splinePrefab;
 	public GameObject spherePrefab;
 	public FlexibleColorPicker colorPickerOffset;
 	public TMP_InputField InputSphereSize;
+	public TMP_InputField InputSplineSize;
+	public GameObject resetButton;
 
 	public float hueOffset;
 	public float saturationOffset;
 	public float valueOffset;
+	public float rotationSpeed = 1f;
+	Vector3 mouseOrigin;
+	bool isRotating = false;
 
 	public List<ColorSphere> sphereList;
 	public List<SplineHandler> activeSplines;
 	public List<SplineHandler> inactiveSplines;
+	public static SphereBox instance { get; private set; }
 
-	private void Awake() {
+	Vector3 centerPoint;
+	Vector3 initialOrientation;
+
+    void Awake() {
+		if (instance != null) {
+			Debug.LogError("Found more than one SphereBox in the scene.");
+		}
+
+		instance = this;
+
 		this.activeSplines = new List<SplineHandler>();
 		this.inactiveSplines = new List<SplineHandler>();
 	}
 
 	void Start() {
-		DrawWireframeBox();
+        this.centerPoint = this.transform.position + new Vector3(this.box_size / 2, this.box_size / 2, this.box_size / 2);
+		this.initialOrientation = this.transform.position;
+
+        DrawWireframeBox();
 		UpdateSphereSize();
 	}
 
@@ -39,14 +57,48 @@ public class SphereBox : MonoBehaviour {
 		DrawWireframeBox();
 	}
 
-	// void Update() {
-	// 	if (transform.position != lastPosition) {
-	// 		DrawWireframeBox();
-	// 		lastPosition = transform.position;
-	// 	}
-	// }
+	 void Update() {
+		this.HandleRotation();
 
-	public void UpdateSphereSize() {
+		if (this.transform.position != this.lastPosition) {
+			DrawWireframeBox();
+			this.lastPosition = this.transform.position;
+		}
+	}
+
+	private void HandleRotation() {
+		if (Input.GetMouseButtonDown(2)) {
+			mouseOrigin = Input.mousePosition;
+			this.isRotating = true;
+		}
+
+		if (Input.GetMouseButtonUp(2)) {
+			this.isRotating = false;
+		}
+
+		if (this.isRotating) {
+			this.resetButton.SetActive(true);
+            Vector3 delta = Input.mousePosition - mouseOrigin;
+			Vector3 rotation = new Vector3(delta.y, -delta.x) * this.rotationSpeed * Time.deltaTime;
+
+			// Move cube so that the center point is at the origin
+			this.transform.position -= this.centerPoint;
+
+			// Perform the rotation
+			this.transform.RotateAround(Vector3.zero, rotation.normalized, rotation.magnitude);
+
+			// Move the cube back to its original position
+			this.transform.position += this.centerPoint;
+		}
+	}
+
+	public void ResetOrientation() {
+		this.transform.position = this.initialOrientation;
+		this.transform.rotation = Quaternion.identity;
+		this.resetButton.SetActive(false);
+    }
+
+    public void UpdateSphereSize() {
 		float sphereSize;
 		try {
 			sphereSize = Mathf.Max(1, float.Parse(this.InputSphereSize.text));
@@ -84,7 +136,7 @@ public class SphereBox : MonoBehaviour {
 		}
 		activeSplines.Clear();
 
-		foreach (ColorRamp ramp in this.colorGrid.colorRamps) {
+		foreach (ColorRamp ramp in ColorGrid.instance.colorRamps) {
 			// Try to reuse an inactive spline, or create a new one
 			SplineHandler spline;
 			if (inactiveSplines.Count > 0) {

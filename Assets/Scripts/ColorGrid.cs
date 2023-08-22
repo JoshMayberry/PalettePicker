@@ -33,7 +33,6 @@ public class ColorRamp : IEnumerable {
 public class ColorGrid : MonoBehaviour {
 	public FlexibleColorPicker colorPicker;
 	public TMP_Dropdown fileTypeDropdown;
-	public SphereBox sphereBox;
 
 	public GameObject squarePrefab;
 	public int gridWidth;
@@ -47,10 +46,16 @@ public class ColorGrid : MonoBehaviour {
 	float lastWidth;
 	bool _showingPicker;
 
-	void Awake() {
+    public static ColorGrid instance { get; private set; }
+    void Awake() {
+        if (instance != null) {
+            Debug.LogError("Found more than one ColorGrid in the scene.");
+        }
+
+        instance = this;
+
 		this.colorRamps = new List<ColorRamp>();
 		this.rectTransform = GetComponent<RectTransform>();
-		this.sphereBox.colorGrid = this;
 	}
 
 	void Start() {
@@ -135,13 +140,13 @@ public class ColorGrid : MonoBehaviour {
 			}
 		}
 
-        this.sphereBox.UpdateSplines();
+        SphereBox.instance.UpdateSplines();
     }
 
     public void AddSquare(int x, int y) {
 		GameObject squareObject = Instantiate(this.squarePrefab, this.transform);
 		ColorSquare square = squareObject.GetComponent<ColorSquare>();
-		square.Init(this, x, y);
+		square.Init(x, y);
 	}
 
 	public void SwapColors(ColorSquare squareA, ColorSquare squareB) {
@@ -178,7 +183,7 @@ public class ColorGrid : MonoBehaviour {
 		this.colorPicker.gameObject.SetActive(false);
 	}
 
-	private string GetFileType() {
+	string GetFileType() {
 		return fileTypeDropdown.options[fileTypeDropdown.value].text;
 	}
 

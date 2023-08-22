@@ -6,7 +6,6 @@ using UnityEngine.Splines;
 
 public class ColorSphere : MonoBehaviour {
 	Renderer myRenderer;
-	SphereBox parent;
 	public ColorSquare owner;
 	public Color color;
 
@@ -17,10 +16,9 @@ public class ColorSphere : MonoBehaviour {
 		this.myRenderer = GetComponent<Renderer>();
 	}
 
-	public void Init(ColorSquare myOwner, SphereBox myParent) {
+	public void Init(ColorSquare myOwner) {
 		this.owner = myOwner;
-		this.parent = myParent;
-		this.parent.sphereList.Add(this);
+		SphereBox.instance.sphereList.Add(this);
 	}
 
 	// Method to update the color of the sphere
@@ -28,7 +26,7 @@ public class ColorSphere : MonoBehaviour {
 		this.color = newColor;
 		this.color.a = 0.75f;
 		this.myRenderer.material.color = this.color;
-		this.transform.localPosition = this.parent.CalculateSpherePosition(this.color);
+		this.transform.localPosition = SphereBox.instance.CalculateSpherePosition(this.color);
 
 		// Update any connected spline knots
 		foreach (SplineConnection connection in this.connectedSplines) {
