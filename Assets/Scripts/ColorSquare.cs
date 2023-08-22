@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler {
 	Image image;
 	ColorGrid parent;
-	ColorSphere mySphere;
+	public ColorSphere sphere;
 	public int grid_x;
 	public int grid_y;
 
@@ -15,6 +15,8 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 	public RectTransform rectTransform;
 
 	public bool isEnabled = false;
+
+	bool isInitializing = true;
 
 	void Awake() {
 		this.image = GetComponent<Image>();
@@ -28,10 +30,12 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 		this.parent.squareList[x, y] = this;
 
 		GameObject sphereObject = Instantiate(this.parent.sphereBox.spherePrefab, this.parent.sphereBox.transform);
-		this.mySphere = sphereObject.GetComponent<ColorSphere>();
-		this.mySphere.Init(this, this.parent.sphereBox);
+		this.sphere = sphereObject.GetComponent<ColorSphere>();
+		this.sphere.Init(this, this.parent.sphereBox);
 
 		this.ToggleEnabled(false);
+
+		this.isInitializing = false;
 	}
 
 	public void Reset() {
@@ -42,7 +46,7 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 	public void SetColor(Color newColor) {
 		newColor.a = (this.isEnabled ? 1f : 0.5f);
 		this.image.color = newColor;
-		this.mySphere.SetColor(newColor);
+		this.sphere.SetColor(newColor);
 	}
 
 	public void SetColor(float h, float s, float v) {
@@ -57,8 +61,12 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 
 	public void ToggleEnabled(bool? enabled = null) {
 		this.isEnabled = (enabled.HasValue ? enabled.Value : !this.isEnabled);
-		this.mySphere.gameObject.SetActive(this.isEnabled);
+		this.sphere.gameObject.SetActive(this.isEnabled);
 		this.SetColor(this.image.color);
+
+		if (!isInitializing) {
+			this.parent.UpdateRamps();
+		}
 	}
 
 	public void OnPointerClick(PointerEventData eventData) {
@@ -88,4 +96,3 @@ public class ColorSquare : MonoBehaviour, IPointerClickHandler, IBeginDragHandle
 		}
 	}
 }
-

@@ -10,7 +10,9 @@ public class SphereBox : MonoBehaviour {
 	public float box_size = 400f;
 	public Color box_color = Color.white;
 	Vector3 lastPosition;
+	public ColorGrid colorGrid;
 
+	public SplineHandler splinePrefab;
 	public GameObject spherePrefab;
 	public FlexibleColorPicker colorPickerOffset;
 	public TMP_InputField InputSphereSize;
@@ -20,7 +22,14 @@ public class SphereBox : MonoBehaviour {
 	public float valueOffset;
 
 	public List<ColorSphere> sphereList;
-	
+	public List<SplineHandler> activeSplines;
+	public List<SplineHandler> inactiveSplines;
+
+	private void Awake() {
+		this.activeSplines = new List<SplineHandler>();
+		this.inactiveSplines = new List<SplineHandler>();
+	}
+
 	void Start() {
 		DrawWireframeBox();
 		UpdateSphereSize();
@@ -63,6 +72,34 @@ public class SphereBox : MonoBehaviour {
 			if (sphere.owner.isEnabled) {
 				sphere.transform.localPosition = this.CalculateSpherePosition(sphere.color);
 			}
+		}
+
+		this.UpdateSplines();
+	}
+
+	public void UpdateSplines() {
+		foreach (SplineHandler spline in activeSplines) {
+			spline.Clear();
+			inactiveSplines.Add(spline);
+		}
+		activeSplines.Clear();
+
+		foreach (ColorRamp ramp in this.colorGrid.colorRamps) {
+			// Try to reuse an inactive spline, or create a new one
+			SplineHandler spline;
+			if (inactiveSplines.Count > 0) {
+				spline = inactiveSplines[inactiveSplines.Count - 1];
+				inactiveSplines.RemoveAt(inactiveSplines.Count - 1);
+			}
+			else {
+				spline = Instantiate(splinePrefab, this.transform);
+			}
+
+			foreach (ColorSquare square in ramp) {
+				spline.Add(square.sphere);
+			}
+			
+			activeSplines.Add(spline);
 		}
 	}
 

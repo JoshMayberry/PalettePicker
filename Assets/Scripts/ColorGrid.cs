@@ -5,6 +5,31 @@ using UnityEngine;
 using SimpleFileBrowser;
 using TMPro;
 
+[Serializable]
+public class ColorRamp : IEnumerable {
+	public List<ColorSquare> myRamp;
+
+	public IEnumerator GetEnumerator() {
+		return ((IEnumerable)myRamp).GetEnumerator();
+	}
+
+	public ColorRamp() {
+		this.myRamp = new List<ColorSquare>();
+	}
+
+	public void Add(ColorSquare item) {
+		this.myRamp.Add(item);
+	}
+
+	public int Count() {
+		return this.myRamp.Count;
+	}
+
+	public void Clear() {
+		this.myRamp.Clear();
+	}
+}
+
 public class ColorGrid : MonoBehaviour {
 	public FlexibleColorPicker colorPicker;
 	public TMP_Dropdown fileTypeDropdown;
@@ -17,12 +42,15 @@ public class ColorGrid : MonoBehaviour {
 	RectTransform rectTransform;
 	ColorSquare currentSquare;
 	public ColorSquare[,] squareList;
+	public List<ColorRamp> colorRamps;
 
 	float lastWidth;
 	bool _showingPicker;
 
 	void Awake() {
+		this.colorRamps = new List<ColorRamp>();
 		this.rectTransform = GetComponent<RectTransform>();
+		this.sphereBox.colorGrid = this;
 	}
 
 	void Start() {
@@ -58,7 +86,59 @@ public class ColorGrid : MonoBehaviour {
 		}
 	}
 
-	public void AddSquare(int x, int y) {
+	public void UpdateRamps() {
+		this.colorRamps.Clear();
+
+		// Horizontal Scan
+		for (int y = 0; y < this.gridHeight; y++) {
+			ColorRamp row = new ColorRamp();
+			for (int x = 0; x < this.gridWidth; x++) {
+				ColorSquare square = this.squareList[x, y];
+				if (square.isEnabled) {
+					row.Add(square);
+					continue;
+				}
+
+				if (row.Count() <= 1) {
+					row.Clear();
+					continue;
+				}
+
+				this.colorRamps.Add(row);
+				row = new ColorRamp();
+			}
+			if (row.Count() > 1) {
+				this.colorRamps.Add(row);
+			}
+		}
+
+		// Vertical Scan
+		for (int x = 0; x < this.gridWidth; x++) {
+			ColorRamp column = new ColorRamp();
+			for (int y = 0; y < this.gridHeight; y++) {
+				ColorSquare square = this.squareList[x, y];
+				if (square.isEnabled) {
+					column.Add(square);
+					continue;
+				}
+
+				if (column.Count() <= 1) {
+					column.Clear();
+					continue;
+				}
+
+				this.colorRamps.Add(column);
+				column = new ColorRamp();
+			}
+			if (column.Count() > 1) {
+				this.colorRamps.Add(column);
+			}
+		}
+
+        this.sphereBox.UpdateSplines();
+    }
+
+    public void AddSquare(int x, int y) {
 		GameObject squareObject = Instantiate(this.squarePrefab, this.transform);
 		ColorSquare square = squareObject.GetComponent<ColorSquare>();
 		square.Init(this, x, y);
@@ -72,6 +152,10 @@ public class ColorGrid : MonoBehaviour {
 		Color tempColor = squareA.GetColor();
 		squareA.SetColor(squareB.GetColor());
 		squareB.SetColor(tempColor);
+
+		this.currentSquare = squareB;
+
+        UpdateRamps();
 	}
 
 	public void OnColorChanged(Color newColor) {

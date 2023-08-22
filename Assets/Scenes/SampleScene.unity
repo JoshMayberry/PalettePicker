@@ -2277,6 +2277,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   box_size: 400
   box_color: {r: 0.9622642, g: 0.13163051, b: 0.13163051, a: 1}
+  colorGrid: {fileID: 45248525}
+  splinePrefab: {fileID: 1206821082893180278, guid: 76549da72ec83e1489cb68fe0b6168a1, type: 3}
   spherePrefab: {fileID: 7166622924439386865, guid: 8d5beab8fcefa514eb16be525a969926, type: 3}
   colorPickerOffset: {fileID: 210305449}
   InputSphereSize: {fileID: 904518247}
@@ -2284,6 +2286,8 @@ MonoBehaviour:
   saturationOffset: 0
   valueOffset: 0
   sphereList: []
+  activeSplines: []
+  inactiveSplines: []
 --- !u!4 &951513791
 Transform:
   m_ObjectHideFlags: 0

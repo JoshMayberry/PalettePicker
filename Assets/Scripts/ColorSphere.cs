@@ -1,18 +1,20 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Splines;
 
 public class ColorSphere : MonoBehaviour {
-	Renderer rend;
+	Renderer myRenderer;
 	SphereBox parent;
 	public ColorSquare owner;
 	public Color color;
 
-	Vector3 minBounds = new Vector3(0, 0, 0);
-	Vector3 maxBounds = new Vector3(1, 1, 1);
+	public List<SplineConnection> connectedSplines;
 
 	void Awake() {
-		rend = GetComponent<Renderer>();
+		this.connectedSplines = new List<SplineConnection>();
+		this.myRenderer = GetComponent<Renderer>();
 	}
 
 	public void Init(ColorSquare myOwner, SphereBox myParent) {
@@ -25,7 +27,14 @@ public class ColorSphere : MonoBehaviour {
 	public void SetColor(Color newColor) {
 		this.color = newColor;
 		this.color.a = 0.75f;
-		this.rend.material.color = this.color;
+		this.myRenderer.material.color = this.color;
 		this.transform.localPosition = this.parent.CalculateSpherePosition(this.color);
+
+		// Update any connected spline knots
+		foreach (SplineConnection connection in this.connectedSplines) {
+			connection.UpdateKnotPosition(this.transform.localPosition);
+		}
 	}
 }
+
+
