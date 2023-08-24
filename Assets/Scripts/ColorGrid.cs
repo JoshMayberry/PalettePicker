@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using SimpleFileBrowser;
 using TMPro;
+using FMODUnity;
+using UnityEngine.UI;
 
 [Serializable]
 public class ColorRamp : IEnumerable {
@@ -39,33 +41,39 @@ public class ColorGrid : MonoBehaviour {
 	public int gridHeight;
 
 	RectTransform rectTransform;
-	ColorSquare currentSquare;
-	public ColorSquare[,] squareList;
+	public ColorSquare currentSquare;
+	public List<List<ColorSquare>> squareList;
 	public List<ColorRamp> colorRamps;
+	public List<ColorSquare> inactiveSquares;
+
 
 	float lastWidth;
 	bool _showingPicker;
 
-    public static ColorGrid instance { get; private set; }
-    void Awake() {
-        if (instance != null) {
-            Debug.LogError("Found more than one ColorGrid in the scene.");
-        }
+	[SerializeField] internal EventReference HoverSound;
+	[SerializeField] internal EventReference ClickSound;
 
-        instance = this;
+	public static ColorGrid instance { get; private set; }
+	void Awake() {
+		if (instance != null) {
+			Debug.LogError("Found more than one ColorGrid in the scene.");
+		}
+
+		instance = this;
 
 		this.colorRamps = new List<ColorRamp>();
 		this.rectTransform = GetComponent<RectTransform>();
+		this.inactiveSquares = new List<ColorSquare>();
 	}
 
 	void Start() {
-		this.squareList = new ColorSquare[this.gridWidth, this.gridHeight];
+		this.squareList = new List<List<ColorSquare>>();
 		this.lastWidth = Screen.width;
 
 		this.HidePicker();
 		this.UpdateGrid();
 
-		this.currentSquare = this.squareList[0, 0];
+		this.currentSquare = this.squareList[0][0];
 	}
 
 	void Update() {
@@ -76,15 +84,41 @@ public class ColorGrid : MonoBehaviour {
 	}
 
 	void UpdateGrid() {
-		float squareSize = this.rectTransform.rect.width / this.gridWidth;
+		float squareSize = Mathf.Min(this.rectTransform.rect.width / this.gridWidth, this.rectTransform.rect.height / this.gridHeight);
+
+		// Resize squareList to match gridHeight
+		while (this.squareList.Count < this.gridHeight) {
+			this.squareList.Add(new List<ColorSquare>());
+		}
+
+		// Remove squares that don't fit anymore
+		while (this.squareList.Count > this.gridHeight) {
+			List<ColorSquare> lastRow = this.squareList[this.squareList.Count - 1];
+			foreach (ColorSquare square in lastRow) {
+				square.gameObject.SetActive(false);
+				square.Reset();
+				this.inactiveSquares.Add(square);
+			}
+			this.squareList.RemoveAt(this.squareList.Count - 1);
+		}
 
 		for (int y = 0; y < this.gridHeight; y++) {
-			for (int x = 0; x < this.gridWidth; x++) {
-				if (squareList[x, y] == null) {
-					this.AddSquare(x, y);
-				}
+			// Resize each row to match gridWidth
+			while (this.squareList[y].Count < this.gridWidth) {
+				this.AddSquare(this.squareList[y].Count, y);
+			}
 
-				ColorSquare square = squareList[x, y];
+			// Remove squares that don't fit anymore
+			while (this.squareList[y].Count > this.gridWidth) {
+				ColorSquare square = this.squareList[y][this.squareList[y].Count - 1];
+				square.gameObject.SetActive(false);
+				square.Reset();
+				this.inactiveSquares.Add(square);
+				this.squareList[y].RemoveAt(this.squareList[y].Count - 1);
+			}
+
+			for (int x = 0; x < this.gridWidth; x++) {
+				ColorSquare square = this.squareList[y][x];
 				square.rectTransform.sizeDelta = new Vector2(squareSize, squareSize);
 				square.rectTransform.anchoredPosition = new Vector2(x * squareSize, -y * squareSize);
 			}
@@ -98,7 +132,7 @@ public class ColorGrid : MonoBehaviour {
 		for (int y = 0; y < this.gridHeight; y++) {
 			ColorRamp row = new ColorRamp();
 			for (int x = 0; x < this.gridWidth; x++) {
-				ColorSquare square = this.squareList[x, y];
+				ColorSquare square = this.squareList[y][x];
 				if (square.isEnabled) {
 					row.Add(square);
 					continue;
@@ -121,7 +155,7 @@ public class ColorGrid : MonoBehaviour {
 		for (int x = 0; x < this.gridWidth; x++) {
 			ColorRamp column = new ColorRamp();
 			for (int y = 0; y < this.gridHeight; y++) {
-				ColorSquare square = this.squareList[x, y];
+				ColorSquare square = this.squareList[y][x];
 				if (square.isEnabled) {
 					column.Add(square);
 					continue;
@@ -140,19 +174,29 @@ public class ColorGrid : MonoBehaviour {
 			}
 		}
 
-        SphereBox.instance.UpdateSplines();
-    }
-
-    public void AddSquare(int x, int y) {
-		GameObject squareObject = Instantiate(this.squarePrefab, this.transform);
-		ColorSquare square = squareObject.GetComponent<ColorSquare>();
-		square.Init(x, y);
+		SphereBox.instance.UpdateSplines();
 	}
 
-	public void SwapColors(ColorSquare squareA, ColorSquare squareB) {
+	public void AddSquare(int x, int y) {
+		ColorSquare square;
+		if (this.inactiveSquares.Count > 0) {
+			square = this.inactiveSquares[0];
+			this.inactiveSquares.RemoveAt(0);
+		}
+		else {
+			GameObject squareObject = Instantiate(this.squarePrefab, this.transform);
+			square = squareObject.GetComponent<ColorSquare>();
+		}
+
+		square.gameObject.SetActive(true);
+		square.Init(x, y);
+		this.squareList[y].Add(square);
+	}
+
+	public void SwapColors(ColorSquare squareA, ColorSquare squareB, bool updateRamps=true) {
 		bool tempEnabled = squareA.isEnabled;
-		squareA.ToggleEnabled(squareB.isEnabled);
-		squareB.ToggleEnabled(tempEnabled);
+		squareA.ToggleEnabled(squareB.isEnabled, false);
+		squareB.ToggleEnabled(tempEnabled, false);
 
 		Color tempColor = squareA.GetColor();
 		squareA.SetColor(squareB.GetColor());
@@ -160,7 +204,59 @@ public class ColorGrid : MonoBehaviour {
 
 		this.currentSquare = squareB;
 
-        UpdateRamps();
+		if (updateRamps) {
+			UpdateRamps();
+		}
+	}
+	public void ShiftUp() {
+		for (int x = 0; x < this.gridWidth; x++) {
+			Color tempColor = this.squareList[0][x].GetColor();
+			bool tempEnabled = this.squareList[0][x].isEnabled;
+			for (int y = 0; y < this.gridHeight - 1; y++) {
+				SwapColors(this.squareList[y][x], this.squareList[y + 1][x], false);
+			}
+			this.squareList[this.gridHeight - 1][x].SetColor(tempColor);
+			this.squareList[this.gridHeight - 1][x].ToggleEnabled(tempEnabled, false);
+		}
+		UpdateRamps();
+	}
+	public void ShiftDown() {
+		for (int x = 0; x < this.gridWidth; x++) {
+			Color tempColor = this.squareList[this.gridHeight - 1][x].GetColor();
+			bool tempEnabled = this.squareList[this.gridHeight - 1][x].isEnabled;
+			for (int y = this.gridHeight - 1; y > 0; y--) {
+				SwapColors(this.squareList[y][x], this.squareList[y - 1][x], false);
+			}
+			this.squareList[0][x].SetColor(tempColor);
+			this.squareList[0][x].ToggleEnabled(tempEnabled, false);
+		}
+		UpdateRamps();
+	}
+
+	public void ShiftLeft() {
+		for (int y = 0; y < this.gridHeight; y++) {
+			Color tempColor = this.squareList[y][0].GetColor();
+			bool tempEnabled = this.squareList[y][0].isEnabled;
+			for (int x = 0; x < this.gridWidth - 1; x++) {
+				SwapColors(this.squareList[y][x], this.squareList[y][x + 1], false);
+			}
+			this.squareList[y][this.gridWidth - 1].SetColor(tempColor);
+			this.squareList[y][this.gridWidth - 1].ToggleEnabled(tempEnabled, false);
+		}
+		UpdateRamps();
+	}
+
+	public void ShiftRight() {
+		for (int y = 0; y < this.gridHeight; y++) {
+			Color tempColor = this.squareList[y][this.gridWidth - 1].GetColor();
+			bool tempEnabled = this.squareList[y][this.gridWidth - 1].isEnabled;
+			for (int x = this.gridWidth - 1; x > 0; x--) {
+				SwapColors(this.squareList[y][x], this.squareList[y][x - 1], false);
+			}
+			this.squareList[y][0].SetColor(tempColor);
+			this.squareList[y][0].ToggleEnabled(tempEnabled, false);
+		}
+		UpdateRamps();
 	}
 
 	public void OnColorChanged(Color newColor) {
@@ -216,7 +312,7 @@ public class ColorGrid : MonoBehaviour {
 			List<ColorData> colorDataList = new List<ColorData>();
 			for (int y = 0; y < this.gridHeight; y++) {
 				for (int x = 0; x < this.gridWidth; x++) {
-					ColorSquare square = this.squareList[x, y];
+					ColorSquare square = this.squareList[y][x];
 					if (square.isEnabled) {
 						ColorData data = new ColorData(square.GetColor(), x, y);
 						colorDataList.Add(data);
@@ -307,7 +403,7 @@ public class ColorGrid : MonoBehaviour {
 		FileBrowser.ShowLoadDialog((string[] paths) => {
 			for (int x = 0; x < this.gridWidth; x++) {
 				for (int y = 0; y < this.gridHeight; y++) {
-					ColorSquare square = this.squareList[x, y];
+					ColorSquare square = this.squareList[y][x];
 					square.Reset();
 				}
 			}
@@ -316,8 +412,23 @@ public class ColorGrid : MonoBehaviour {
 				case "JSON": {
 					string json = FileBrowserHelpers.ReadTextFromFile(paths[0]);
 					ColorData[] colorDataArray = JsonHelper.FromJson<ColorData>(json);
+
+					// Determine if grid is too small
+					int maxX = 0;
+					int maxY = 0;
 					foreach (ColorData data in colorDataArray) {
-						ColorSquare square = this.squareList[data.x, data.y];
+						maxX = Mathf.Max(maxX, data.x + 1);
+						maxY = Mathf.Max(maxY, data.y + 1);
+					}
+
+					if ((maxX > this.gridWidth) || (maxY > this.gridHeight)) {
+						this.gridWidth = maxX;
+						this.gridHeight = maxY;
+						this.UpdateGrid();
+					}
+
+					foreach (ColorData data in colorDataArray) {
+						ColorSquare square = this.squareList[data.y][data.x];
 						square.ToggleEnabled(true);
 						square.SetColor(data.h, data.s, data.v);
 					}
@@ -328,14 +439,20 @@ public class ColorGrid : MonoBehaviour {
 					Texture2D texture = new Texture2D(1, 1);
 					texture.LoadImage(fileData);
 
-					int i = 0;
+                    // Determine if grid is too small
+                    if (this.gridHeight * this.gridWidth < texture.width) {
+                        this.gridHeight = (int)Mathf.Ceil(Mathf.Sqrt(texture.width));
+                        this.gridWidth = this.gridHeight;
+                    }
+
+                    int i = 0;
 					for (int y = 0; y < this.gridHeight; y++) {
 						for (int x = 0; x < this.gridWidth; x++) {
 							if (i >= texture.width) {
 								return;
 							}
 
-							ColorSquare square = this.squareList[x, y];
+							ColorSquare square = this.squareList[y][x];
 							square.ToggleEnabled(true);
 
 							Color color = texture.GetPixel(i, 0);
@@ -350,10 +467,16 @@ public class ColorGrid : MonoBehaviour {
 					Texture2D texture = new Texture2D(1, 1);
 					texture.LoadImage(fileData);
 
-					// TODO: Check that the height and width match what is in the texture
-					for (int y = 0; y < this.gridHeight; y++) {
+                    // Determine if grid is too small
+                    if ((texture.width > this.gridWidth) || (texture.height > this.gridHeight)) {
+                        this.gridWidth = texture.width;
+                        this.gridHeight = texture.height;
+                        this.UpdateGrid();
+                    }
+
+                    for (int y = 0; y < this.gridHeight; y++) {
 						for (int x = 0; x < this.gridWidth; x++) {
-							ColorSquare square = this.squareList[x, y];
+							ColorSquare square = this.squareList[y][x];
 							Color color = texture.GetPixel(x, y);
 
 							if (color.a > 0.5) {
@@ -368,7 +491,13 @@ public class ColorGrid : MonoBehaviour {
 					string rawString = FileBrowserHelpers.ReadTextFromFile(paths[0]);
 					string[] hexColors = rawString.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
-					int i = 0;
+                    // Determine if grid is too small
+                    if (this.gridHeight * this.gridWidth < hexColors.Length) {
+                        this.gridHeight = (int)Mathf.Ceil(Mathf.Sqrt(hexColors.Length));
+                        this.gridWidth = this.gridHeight;
+                    }
+
+                    int i = 0;
 					for (int y = 0; y < this.gridHeight; y++) {
 						for (int x = 0; x < this.gridWidth; x++) {
 							if (i >= hexColors.Length) {
@@ -377,7 +506,7 @@ public class ColorGrid : MonoBehaviour {
 
 							Color color;
 							if (ColorUtility.TryParseHtmlString("#" + hexColors[x], out color)) {
-								ColorSquare square = this.squareList[x, y];
+								ColorSquare square = this.squareList[y][x];
 								square.ToggleEnabled(true);
 								square.SetColor(color);
 							}
@@ -391,6 +520,34 @@ public class ColorGrid : MonoBehaviour {
 			}
 		}, null, SimpleFileBrowser.FileBrowser.PickMode.Files, initialFilename: "palette" + fileExtension, title:"Import Colors", loadButtonText:"Import");
 	}
+
+	public void IncreaseColumns() {
+		this.gridWidth++;
+		this.UpdateGrid();
+	}
+	public void DecreaseColumns() {
+		if (this.gridWidth == 1) {
+			return;
+		}
+
+		this.gridWidth--;
+		this.UpdateGrid();
+	}
+	public void IncreaseRows() {
+		this.gridHeight++;
+		this.UpdateGrid();
+	}
+	public void DecreaseRows() {
+		if (this.gridHeight == 1) {
+			return;
+		}
+
+		this.gridHeight--;
+		this.UpdateGrid();
+	}
+
+
+
 
 	[Serializable]
 	public class ColorData {

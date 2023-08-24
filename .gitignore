@@ -73,3 +73,10 @@ crashlytics-build.properties
 Assets/FlexibleColorPicker/
 Assets/Plugins/
 Assets/TextMesh Pro/
+Fmod/.cache/{01419f26-d484-4bcc-a648-1ba128c2385a}.pdc
+Fmod/.cache/
+Fmod/Metadata/
+Fmod/.unsaved/
+fmod_editor.log
+Fmod/**.meta
+Fmod/**/**.meta

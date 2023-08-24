@@ -202,4 +202,20 @@ public class SphereBox : MonoBehaviour {
 
 		return new Vector3(x, y, z);
 	}
+
+	public Color CalculateSphereColor(Vector3 position) {
+        float x = position.x / this.box_size;
+        float y = position.y / this.box_size;
+        float z = position.z / this.box_size;
+
+        float h = (z - this.hueOffset) % 1f;
+        float s = (x - this.saturationOffset) % 1f;
+        float v = (y - this.valueOffset) % 1f;
+
+        h = Mathf.Clamp01(h);
+        s = Mathf.Clamp01(s);
+        v = Mathf.Clamp01(v);
+
+        return Color.HSVToRGB(h, s, v);
+    }
 }
