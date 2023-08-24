@@ -29,6 +29,7 @@ public class ColorSphere : MonoBehaviour {
 
             if (Physics.Raycast(ray, out hit) && hit.transform == this.transform) {
                 this.isDragging = true;
+                SphereBox.instance.isDraggingSphere = true;
                 this.distanceFromCamera = Vector3.Distance(Camera.main.transform.position, hit.point);
                 this.screenPosition = Camera.main.WorldToScreenPoint(transform.position);
             }
@@ -37,6 +38,7 @@ public class ColorSphere : MonoBehaviour {
         // On mouse up, end dragging
         if (Input.GetMouseButtonUp(0)) {
             this.isDragging = false;
+            SphereBox.instance.isDraggingSphere = false;
         }
 
         // While dragging, update the local position
@@ -64,17 +66,11 @@ public class ColorSphere : MonoBehaviour {
     }
 
     public void SetPosition(Vector3 newPosition) {
-        this.color = SphereBox.instance.CalculateSphereColor(newPosition);
-        this.color.a = 1;
-        //this.owner.SetColor(this.color, false);
         this.owner.PickThis();
-        ColorGrid.instance.colorPicker.color = this.color;
+        ColorGrid.instance.colorPicker.color = SphereBox.instance.CalculateSphereColor(newPosition);
+    }
 
-        this.color.a = 0.75f;
-        this.myRenderer.material.color = this.color;
-        this.transform.localPosition = newPosition;
-
-        // Update any connected spline knots
+    public void UpdateSplinePositions() {
         foreach (SplineConnection connection in this.connectedSplines) {
             connection.UpdateKnotPosition(this.transform.localPosition);
         }
@@ -86,7 +82,7 @@ public class ColorSphere : MonoBehaviour {
 	}
 
 	public void SetColor(Color newColor) {
-		this.color = newColor;
+        this.color = newColor;
 		this.color.a = 0.75f;
 		this.myRenderer.material.color = this.color;
 		this.transform.localPosition = SphereBox.instance.CalculateSpherePosition(this.color);

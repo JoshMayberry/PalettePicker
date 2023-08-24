@@ -50,10 +50,11 @@ public class SplineHandler : MonoBehaviour {
 
     public void Hide() {
         this.splineExtrude.Radius = 0;
-        this.splineExtrude.Rebuild();
+        this.gameObject.SetActive(false);
     }
     public void Show() {
         this.splineExtrude.Radius = float.Parse(SphereBox.instance.InputSplineSize.text);
+        this.gameObject.SetActive(true);
         this.splineExtrude.Rebuild();
     }
 }
@@ -63,17 +64,28 @@ public class SplineConnection {
     public SplineHandler splineHandler;
     public int knotIndex;
 
+    float updateTimer;
+    float timeBetweenDragUpdates = 0.05f;
+
     public SplineConnection(SplineHandler handler, int index) {
         splineHandler = handler;
         knotIndex = index;
     }
 
     public void UpdateKnotPosition(Vector3 newPosition) {
+        if (SphereBox.instance.isDraggingSphere) {
+            if (Time.time < this.updateTimer) {
+                return;
+            }
+
+            this.updateTimer = Time.time + this.timeBetweenDragUpdates;
+        }
+
 		if (this.knotIndex < 0 || (this.knotIndex >= this.splineHandler.splineContainer.Spline.Count)) {
 			return;
 		}
-        
-		BezierKnot knot = this.splineHandler.splineContainer.Spline[this.knotIndex];
+
+        BezierKnot knot = this.splineHandler.splineContainer.Spline[this.knotIndex];
         knot.Position = newPosition;
         this.splineHandler.splineContainer.Spline.SetKnot(this.knotIndex, knot);
 

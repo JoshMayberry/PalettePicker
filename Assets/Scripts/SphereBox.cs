@@ -25,8 +25,9 @@ public class SphereBox : MonoBehaviour {
 	public float rotationSpeed = 1f;
 	Vector3 mouseOrigin;
 	bool isRotating = false;
+    public bool isDraggingSphere = false;
 
-	public List<ColorSphere> sphereList;
+    public List<ColorSphere> sphereList;
 	public List<SplineHandler> activeSplines;
 	public List<SplineHandler> inactiveSplines;
 	public static SphereBox instance { get; private set; }
@@ -126,8 +127,14 @@ public class SphereBox : MonoBehaviour {
 			}
 		}
 
-		this.UpdateSplines();
+		this.UpdateSplinePositions();
 	}
+
+	public void UpdateSplinePositions() {
+		foreach (ColorSphere sphere in this.sphereList) {
+			sphere.UpdateSplinePositions();
+		}
+    }
 
 	public void UpdateSplines() {
 		foreach (SplineHandler spline in activeSplines) {
@@ -136,7 +143,11 @@ public class SphereBox : MonoBehaviour {
 		}
 		activeSplines.Clear();
 
-		foreach (ColorRamp ramp in ColorGrid.instance.colorRamps) {
+        if (float.Parse(this.InputSplineSize.text) == 0) {
+			return;
+        }
+
+        foreach (ColorRamp ramp in ColorGrid.instance.colorRamps) {
 			// Try to reuse an inactive spline, or create a new one
 			SplineHandler spline;
 			if (inactiveSplines.Count > 0) {

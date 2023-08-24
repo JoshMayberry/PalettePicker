@@ -213,6 +213,7 @@ MonoBehaviour:
   squarePrefab: {fileID: 3813134531689890659, guid: 1d2a2c5ee9abfe24dbe2175df9d07f02, type: 3}
   gridWidth: 8
   gridHeight: 8
+  currentSquare: {fileID: 0}
   colorRamps: []
   inactiveSquares: []
   HoverSound:
@@ -6750,7 +6751,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 951513790}
         m_TargetAssemblyTypeName: SphereBox, Assembly-CSharp
-        m_MethodName: UpdateSplines
+        m_MethodName: UpdateSplineSize
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
