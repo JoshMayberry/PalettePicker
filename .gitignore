@@ -80,3 +80,5 @@ Fmod/.unsaved/
 fmod_editor.log
 Fmod/**.meta
 Fmod/**/**.meta
+Assets/StreamingAssets/
+dist/

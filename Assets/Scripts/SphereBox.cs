@@ -25,32 +25,36 @@ public class SphereBox : MonoBehaviour {
 	public float rotationSpeed = 1f;
 	Vector3 mouseOrigin;
 	bool isRotating = false;
-    public bool isDraggingSphere = false;
+	public bool isDraggingSphere = false;
 
-    public List<ColorSphere> sphereList;
-	public List<SplineHandler> activeSplines;
-	public List<SplineHandler> inactiveSplines;
-	public static SphereBox instance { get; private set; }
+	public List<ColorSphere> sphereList;
+    public List<SplineHandler> activeSplines;
+    public List<SplineHandler> inactiveSplines;
+    public List<SplineGroup> activeSplineGroups;
+    public List<SplineGroup> inactiveSplineGroups;
+    public static SphereBox instance { get; private set; }
 
 	Vector3 centerPoint;
 	Vector3 initialOrientation;
 
-    void Awake() {
+	void Awake() {
 		if (instance != null) {
 			Debug.LogError("Found more than one SphereBox in the scene.");
 		}
 
 		instance = this;
 
-		this.activeSplines = new List<SplineHandler>();
-		this.inactiveSplines = new List<SplineHandler>();
+        this.activeSplines = new List<SplineHandler>();
+        this.inactiveSplines = new List<SplineHandler>();
+        this.activeSplineGroups = new List<SplineGroup>();
+		this.inactiveSplineGroups = new List<SplineGroup>();
 	}
 
 	void Start() {
-        this.centerPoint = this.transform.position + new Vector3(this.box_size / 2, this.box_size / 2, this.box_size / 2);
+		this.centerPoint = this.transform.position + new Vector3(this.box_size / 2, this.box_size / 2, this.box_size / 2);
 		this.initialOrientation = this.transform.position;
 
-        DrawWireframeBox();
+		DrawWireframeBox();
 		UpdateSphereSize();
 	}
 
@@ -79,7 +83,7 @@ public class SphereBox : MonoBehaviour {
 
 		if (this.isRotating) {
 			this.resetButton.SetActive(true);
-            Vector3 delta = Input.mousePosition - mouseOrigin;
+			Vector3 delta = Input.mousePosition - mouseOrigin;
 			Vector3 rotation = new Vector3(delta.y, -delta.x) * this.rotationSpeed * Time.deltaTime;
 
 			// Move cube so that the center point is at the origin
@@ -97,15 +101,15 @@ public class SphereBox : MonoBehaviour {
 		this.transform.position = this.initialOrientation;
 		this.transform.rotation = Quaternion.identity;
 		this.resetButton.SetActive(false);
-    }
+	}
 
-    public void UpdateSphereSize() {
+	public void UpdateSphereSize() {
 		float sphereSize;
 		try {
 			sphereSize = Mathf.Max(1, float.Parse(this.InputSphereSize.text));
 		}
 		catch (Exception error) {
-			Debug.Log(error);
+			Debug.LogError(error);
 			sphereSize = 1;
 		} 
 
@@ -134,35 +138,67 @@ public class SphereBox : MonoBehaviour {
 		foreach (ColorSphere sphere in this.sphereList) {
 			sphere.UpdateSplinePositions();
 		}
-    }
+	}
 
-	public void UpdateSplines() {
-		foreach (SplineHandler spline in activeSplines) {
-			spline.Clear();
-			inactiveSplines.Add(spline);
-		}
-		activeSplines.Clear();
-
-        if (float.Parse(this.InputSplineSize.text) == 0) {
-			return;
+    SplineGroup SpawnSplineGroup() {
+        // Try to reuse an inactive splineGroup, or create a new one
+        SplineGroup splineGroup;
+        if (this.inactiveSplineGroups.Count > 0) {
+            splineGroup = this.inactiveSplineGroups[this.inactiveSplineGroups.Count - 1];
+            this.inactiveSplineGroups.RemoveAt(this.inactiveSplineGroups.Count - 1);
+        }
+        else {
+            splineGroup = new SplineGroup();
         }
 
-        foreach (ColorRamp ramp in ColorGrid.instance.colorRamps) {
-			// Try to reuse an inactive spline, or create a new one
-			SplineHandler spline;
-			if (inactiveSplines.Count > 0) {
-				spline = inactiveSplines[inactiveSplines.Count - 1];
-				inactiveSplines.RemoveAt(inactiveSplines.Count - 1);
-			}
-			else {
-				spline = Instantiate(splinePrefab, this.transform);
-			}
+        this.activeSplineGroups.Add(splineGroup);
 
-			foreach (ColorSquare square in ramp) {
-				spline.Add(square.sphere);
-			}
-			
-			activeSplines.Add(spline);
+		return splineGroup;
+    }
+
+    public SplineHandler SpawnSpline() {
+        // Try to reuse an inactive spline, or create a new one
+        SplineHandler spline;
+        if (this.inactiveSplines.Count > 0) {
+            spline = this.inactiveSplines[this.inactiveSplines.Count - 1];
+            this.inactiveSplines.RemoveAt(this.inactiveSplines.Count - 1);
+        }
+        else {
+            spline = Instantiate(this.splinePrefab, this.transform);
+        }
+		spline.gameObject.SetActive(true);
+        this.activeSplines.Add(spline);
+
+		return spline;
+    }
+
+    public void DespawnSplineGroup(SplineGroup splineGroup) {
+        splineGroup.Clear();
+        this.inactiveSplineGroups.Add(splineGroup);
+        this.activeSplineGroups.Remove(splineGroup);
+    }
+
+    public void DespawnSpline(SplineHandler spline) {
+        spline.Clear();
+        spline.splineGroup?.RemoveSpline(spline);
+        spline.gameObject.SetActive(false);
+        this.inactiveSplines.Add(spline);
+        this.activeSplines.Remove(spline);
+    }
+
+    public void UpdateSplines() {
+        List<SplineGroup> tempList = new List<SplineGroup>(this.activeSplineGroups);
+		foreach (SplineGroup splineGroup in tempList) {
+            this.DespawnSplineGroup(splineGroup);
+        }
+
+		if (float.Parse(this.InputSplineSize.text) == 0) {
+			return;
+		}
+
+		foreach (ColorRamp ramp in ColorGrid.instance.colorRamps) {
+			SplineGroup splineGroup = this.SpawnSplineGroup();
+			splineGroup.SetRamp(ramp);
 		}
 	}
 
@@ -215,18 +251,18 @@ public class SphereBox : MonoBehaviour {
 	}
 
 	public Color CalculateSphereColor(Vector3 position) {
-        float x = position.x / this.box_size;
-        float y = position.y / this.box_size;
-        float z = position.z / this.box_size;
+		float x = position.x / this.box_size;
+		float y = position.y / this.box_size;
+		float z = position.z / this.box_size;
 
-        float h = (z - this.hueOffset) % 1f;
-        float s = (x - this.saturationOffset) % 1f;
-        float v = (y - this.valueOffset) % 1f;
+		float h = (z - this.hueOffset) % 1f;
+		float s = (x - this.saturationOffset) % 1f;
+		float v = (y - this.valueOffset) % 1f;
 
-        h = Mathf.Clamp01(h);
-        s = Mathf.Clamp01(s);
-        v = Mathf.Clamp01(v);
+		h = Mathf.Clamp01(h);
+		s = Mathf.Clamp01(s);
+		v = Mathf.Clamp01(v);
 
-        return Color.HSVToRGB(h, s, v);
-    }
+		return Color.HSVToRGB(h, s, v);
+	}
 }

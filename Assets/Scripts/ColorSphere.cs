@@ -68,7 +68,7 @@ public class ColorSphere : MonoBehaviour {
     public void SetPosition(Vector3 newPosition) {
         this.owner.PickThis();
         ColorGrid.instance.colorPicker.color = SphereBox.instance.CalculateSphereColor(newPosition);
-    }
+    } 
 
     public void UpdateSplinePositions() {
         foreach (SplineConnection connection in this.connectedSplines) {
@@ -92,7 +92,6 @@ public class ColorSphere : MonoBehaviour {
 			connection.UpdateKnotPosition(this.transform.localPosition);
 		}
 	}
-    
 
     public void OnPointerClick(PointerEventData eventData) {
 		this.owner.OnPointerClick(eventData);

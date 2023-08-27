@@ -546,9 +546,6 @@ public class ColorGrid : MonoBehaviour {
 		this.UpdateGrid();
 	}
 
-
-
-
 	[Serializable]
 	public class ColorData {
 		public Color color;
